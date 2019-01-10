@@ -25,6 +25,12 @@
         "friendsofsymfony/http-cache": "~1.4",
         "symfony/framework-bundle": "^2.3||^3.0"
     },
+    "repositories": [
+      {
+        "type": "git",
+        "url": "git@github.com:PeerJ/FOSHttpCache.git"
+      }
+    ],
     "require-dev": {
         "mockery/mockery": "0.9.*",
         "monolog/monolog": "*",
