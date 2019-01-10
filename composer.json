@@ -1,5 +1,5 @@
 {
-    "name": "friendsofsymfony/http-cache-bundle",
+    "name": "peerj/http-cache-bundle",
     "type": "symfony-bundle",
     "description": "Set path based HTTP cache headers and send invalidation requests to your HTTP cache",
     "keywords": [ "http", "caching", "purge", "invalidation", "varnish", "esi" ],
