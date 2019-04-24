@@ -32,8 +32,8 @@ class RefreshPathCommand extends BaseInvalidateCommand
      * If no cache manager is specified explicitly, fos_http_cache.cache_manager
      * is automatically loaded.
      *
-     * @param CacheManager|null $cacheManager The cache manager to talk to.
-     * @param string            $commandName  Name of this command, in case you want to reuse it.
+     * @param CacheManager|null $cacheManager The cache manager to talk to
+     * @param string            $commandName  Name of this command, in case you want to reuse it
      */
     public function __construct(CacheManager $cacheManager = null, $commandName = 'fos:httpcache:refresh:path')
     {
@@ -42,7 +42,7 @@ class RefreshPathCommand extends BaseInvalidateCommand
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function configure()
     {
@@ -54,7 +54,7 @@ class RefreshPathCommand extends BaseInvalidateCommand
                 InputArgument::IS_ARRAY | InputArgument::REQUIRED,
                 'URL paths you want to refresh, you can specify any number of paths'
             )
-            ->setHelp(<<<EOF
+            ->setHelp(<<<'EOF'
 The <info>%command.name%</info> command refreshes a list of paths on the configured caching proxies.
 
 Example:
@@ -66,7 +66,7 @@ EOF
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {

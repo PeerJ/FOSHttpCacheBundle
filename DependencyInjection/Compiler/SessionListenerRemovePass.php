@@ -15,23 +15,21 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * Attach Symfony2 logger to cache manager.
+ * Remove the session listener decorator again if the application has no session listener.
+ *
+ * This will happen on some APIs when the session system is not activated.
  */
-class LoggerPass implements CompilerPassInterface
+class SessionListenerRemovePass implements CompilerPassInterface
 {
     /**
      * {@inheritdoc}
      */
     public function process(ContainerBuilder $container)
     {
-        if (!$container->has('logger') || !$container->has('fos_http_cache.event_listener.log')) {
+        if ($container->has('session_listener')) {
             return;
         }
 
-        $subscriber = $container->getDefinition('fos_http_cache.event_listener.log')
-            ->setAbstract(false);
-
-        $container->getDefinition('fos_http_cache.cache_manager')
-            ->addMethodCall('addSubscriber', array($subscriber));
+        $container->removeDefinition('fos_http_cache.user_context.session_listener');
     }
 }

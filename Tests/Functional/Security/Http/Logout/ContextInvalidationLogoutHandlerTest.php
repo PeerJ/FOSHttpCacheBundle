@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of the FOSHttpCacheBundle package.
+ *
+ * (c) FriendsOfSymfony <http://friendsofsymfony.github.com/>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace FOS\HttpCacheBundle\Tests\Functional\Security\Http\Logout;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -14,8 +23,8 @@ class ContextInvalidationLogoutHandlerTest extends WebTestCase
             'fos_http_cache.proxy_client.varnish',
             '\FOS\HttpCache\ProxyClient\Varnish'
         )
-            ->shouldReceive('ban')->once()->with(array('accept' => 'application/vnd.fos.user-context-hash', 'Cookie' => '.*test.*'))
-            ->shouldReceive('ban')->once()->with(array('accept' => 'application/vnd.fos.user-context-hash', 'Authorization' => '.*test.*'))
+            ->shouldReceive('ban')->once()->with(array('accept' => 'application/vnd.fos.user-context-hash', 'cookie' => '.*test.*'))
+            ->shouldReceive('ban')->once()->with(array('accept' => 'application/vnd.fos.user-context-hash', 'authorization' => '.*test.*'))
             ->shouldReceive('flush')->once()
         ;
 

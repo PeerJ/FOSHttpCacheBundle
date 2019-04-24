@@ -16,6 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
+use Symfony\Component\HttpKernel\Kernel;
 
 class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
 {
@@ -114,6 +115,25 @@ class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($container->hasDefinition('fos_http_cache.proxy_client.varnish'));
         $this->assertFalse($container->hasDefinition('fos_http_cache.proxy_client.nginx'));
         $this->assertTrue($container->hasDefinition('fos_http_cache.proxy_client.symfony'));
+        $this->assertTrue($container->hasAlias('fos_http_cache.default_proxy_client'));
+        $this->assertTrue($container->hasDefinition('fos_http_cache.event_listener.invalidation'));
+        $this->assertFalse($container->hasDefinition('fos_http_cache.handler.tag_handler'));
+    }
+
+    public function testConfigCustomClient()
+    {
+        $container = $this->createContainer();
+        $this->extension->load(array(
+            array(
+                'cache_manager' => array(
+                    'custom_proxy_client' => 'app.cache.client',
+                ),
+            ),
+        ), $container);
+
+        $this->assertFalse($container->hasDefinition('fos_http_cache.proxy_client.varnish'));
+        $this->assertFalse($container->hasDefinition('fos_http_cache.proxy_client.nginx'));
+        $this->assertFalse($container->hasDefinition('fos_http_cache.proxy_client.symfony'));
         $this->assertTrue($container->hasAlias('fos_http_cache.default_proxy_client'));
         $this->assertTrue($container->hasDefinition('fos_http_cache.event_listener.invalidation'));
         $this->assertFalse($container->hasDefinition('fos_http_cache.handler.tag_handler'));
@@ -278,7 +298,7 @@ class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
     {
         $config = $this->getBaseConfig() + array(
             'user_context' => array(
-                'match'   => array(
+                'match' => array(
                     'matcher_service' => 'my_request_matcher_id',
                     'method' => 'AUTHENTICATE',
                     'accept' => 'application/vnd.test',
@@ -307,7 +327,7 @@ class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
         $config = array(
             array('user_context' => array(
                 'enabled' => false,
-                'match'   => array(
+                'match' => array(
                     'matcher_service' => 'my_request_matcher_id',
                     'method' => 'AUTHENTICATE',
                     'accept' => 'application/vnd.test',
@@ -327,6 +347,37 @@ class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($container->has('fos_http_cache.user_context.request_matcher'));
         $this->assertFalse($container->has('fos_http_cache.user_context.role_provider'));
         $this->assertFalse($container->has('fos_http_cache.user_context.logout_handler'));
+        $this->assertFalse($container->has('fos_http_cache.user_context.session_listener'));
+    }
+
+    /**
+     * @group sf34
+     */
+    public function testSessionListenerIsDecoratedIfNeeded()
+    {
+        $config = array(
+            array('user_context' => array(
+                'user_identifier_headers' => array('X-Foo'),
+                'user_hash_header' => 'X-Bar',
+                'hash_cache_ttl' => 30,
+                'role_provider' => true,
+            )),
+        );
+
+        $container = $this->createContainer();
+        $this->extension->load($config, $container);
+
+        // The whole definition should be removed for Symfony < 3.4
+        if (version_compare(Kernel::VERSION, '3.4', '<')) {
+            $this->assertFalse($container->hasDefinition('fos_http_cache.user_context.session_listener'));
+        } else {
+            $this->assertTrue($container->hasDefinition('fos_http_cache.user_context.session_listener'));
+
+            $definition = $container->getDefinition('fos_http_cache.user_context.session_listener');
+
+            $this->assertSame('x-bar', $definition->getArgument(1));
+            $this->assertSame(array('x-foo'), $definition->getArgument(2));
+        }
     }
 
     public function testConfigLoadFlashMessageSubscriber()
@@ -343,7 +394,7 @@ class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
     protected function createContainer()
     {
         $container = new ContainerBuilder(
-            new ParameterBag(array('kernel.debug' => false,))
+            new ParameterBag(array('kernel.debug' => false))
         );
 
         // The cache_manager service depends on the router service
@@ -382,7 +433,7 @@ class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
         $matcherId = null;
         foreach ($container->getDefinitions() as $id => $definition) {
             if ($definition instanceof DefinitionDecorator &&
-                $definition->getParent() === 'fos_http_cache.request_matcher'
+                'fos_http_cache.request_matcher' === $definition->getParent()
             ) {
                 if ($matcherDefinition) {
                     $this->fail('More then one request matcher was created');
@@ -401,7 +452,7 @@ class FOSHttpCacheExtensionTest extends \PHPUnit_Framework_TestCase
         $ruleDefinition = null;
         foreach ($container->getDefinitions() as $definition) {
             if ($definition instanceof DefinitionDecorator &&
-                $definition->getParent() === 'fos_http_cache.rule_matcher'
+                'fos_http_cache.rule_matcher' === $definition->getParent()
             ) {
                 if ($ruleDefinition) {
                     $this->fail('More then one rule matcher was created');

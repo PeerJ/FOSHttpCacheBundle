@@ -37,7 +37,7 @@ class FlashMessageSubscriber implements EventSubscriberInterface
     private $session;
 
     /**
-     * Set a serializer instance
+     * Set a serializer instance.
      *
      * @param Session $session A session instance
      * @param array   $options
@@ -59,13 +59,13 @@ class FlashMessageSubscriber implements EventSubscriberInterface
     }
 
     /**
-     * Moves flash messages from the session to a cookie inside a Response Kernel listener
+     * Moves flash messages from the session to a cookie inside a Response Kernel listener.
      *
      * @param FilterResponseEvent $event
      */
     public function onKernelResponse(FilterResponseEvent $event)
     {
-        if ($event->getRequestType() !== HttpKernel::MASTER_REQUEST) {
+        if (HttpKernel::MASTER_REQUEST !== $event->getRequestType()) {
             return;
         }
 

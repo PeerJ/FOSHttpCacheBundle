@@ -13,6 +13,7 @@ namespace FOS\HttpCacheBundle\EventListener;
 
 use FOS\HttpCache\UserContext\HashGenerator;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestMatcherInterface;
 use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
@@ -57,25 +58,36 @@ class UserContextSubscriber implements EventSubscriberInterface
     private $hashHeader;
 
     /**
-     * @var integer
+     * @var int
      */
     private $ttl;
+
+    /**
+     * Used to exclude anonymous requests (no authentication nor session) from user hash sanity check.
+     * It prevents issues when the hash generator that is used returns a customized value for anonymous users,
+     * that differs from the documented, hardcoded one.
+     *
+     * @var RequestMatcherInterface
+     */
+    private $anonymousRequestMatcher;
 
     public function __construct(
         RequestMatcherInterface $requestMatcher,
         HashGenerator $hashGenerator,
         array $userIdentifierHeaders = array('Cookie', 'Authorization'),
-        $hashHeader = "X-User-Context-Hash",
-        $ttl = 0
+        $hashHeader = 'X-User-Context-Hash',
+        $ttl = 0,
+        RequestMatcherInterface $anonymousRequestMatcher = null
     ) {
         if (!count($userIdentifierHeaders)) {
             throw new \InvalidArgumentException('The user context must vary on some request headers');
         }
-        $this->requestMatcher        = $requestMatcher;
-        $this->hashGenerator         = $hashGenerator;
+        $this->requestMatcher = $requestMatcher;
+        $this->hashGenerator = $hashGenerator;
         $this->userIdentifierHeaders = $userIdentifierHeaders;
-        $this->hashHeader            = $hashHeader;
-        $this->ttl                   = $ttl;
+        $this->hashHeader = $hashHeader;
+        $this->ttl = $ttl;
+        $this->anonymousRequestMatcher = $anonymousRequestMatcher;
     }
 
     /**
@@ -88,12 +100,12 @@ class UserContextSubscriber implements EventSubscriberInterface
      */
     public function onKernelRequest(GetResponseEvent $event)
     {
-        if ($event->getRequestType() != HttpKernelInterface::MASTER_REQUEST) {
+        if (HttpKernelInterface::MASTER_REQUEST != $event->getRequestType()) {
             return;
         }
 
         if (!$this->requestMatcher->matches($event->getRequest())) {
-            if ($event->getRequest()->headers->has($this->hashHeader)) {
+            if ($event->getRequest()->headers->has($this->hashHeader) && !$this->isAnonymous($event->getRequest())) {
                 $this->hash = $this->hashGenerator->generateHash();
             }
 
@@ -105,7 +117,7 @@ class UserContextSubscriber implements EventSubscriberInterface
         // status needs to be 200 as otherwise varnish will not cache the response.
         $response = new Response('', 200, array(
             $this->hashHeader => $hash,
-            'Content-Type'    => 'application/vnd.fos.user-context-hash',
+            'Content-Type' => 'application/vnd.fos.user-context-hash',
         ));
 
         if ($this->ttl > 0) {
@@ -121,6 +133,20 @@ class UserContextSubscriber implements EventSubscriberInterface
     }
 
     /**
+     * Tests if $request is an anonymous request or not.
+     *
+     * For backward compatibility reasons, true will be returned if no anonymous request matcher was provided.
+     *
+     * @param Request $request
+     *
+     * @return bool
+     */
+    private function isAnonymous(Request $request)
+    {
+        return $this->anonymousRequestMatcher ? $this->anonymousRequestMatcher->matches($request) : false;
+    }
+
+    /**
      * Add the context hash header to the headers to vary on if the header was
      * present in the request.
      *
@@ -128,7 +154,7 @@ class UserContextSubscriber implements EventSubscriberInterface
      */
     public function onKernelResponse(FilterResponseEvent $event)
     {
-        if ($event->getRequestType() != HttpKernelInterface::MASTER_REQUEST) {
+        if (HttpKernelInterface::MASTER_REQUEST != $event->getRequestType()) {
             return;
         }
 
@@ -139,9 +165,14 @@ class UserContextSubscriber implements EventSubscriberInterface
 
         if ($request->headers->has($this->hashHeader)) {
             // hash has changed, session has most certainly changed, prevent setting incorrect cache
-            if (!is_null($this->hash) && $this->hash !== $request->headers->get($this->hashHeader)) {
-                $response->setClientTtl(0);
+            if (null !== $this->hash && $this->hash !== $request->headers->get($this->hashHeader)) {
+                $response->setCache([
+                    'max_age' => 0,
+                    's_maxage' => 0,
+                    'private' => true,
+                ]);
                 $response->headers->addCacheControlDirective('no-cache');
+                $response->headers->addCacheControlDirective('no-store');
 
                 return;
             }
@@ -167,7 +198,7 @@ class UserContextSubscriber implements EventSubscriberInterface
     {
         return array(
             KernelEvents::RESPONSE => 'onKernelResponse',
-            KernelEvents::REQUEST  => array('onKernelRequest', 7),
+            KernelEvents::REQUEST => array('onKernelRequest', 7),
         );
     }
 }

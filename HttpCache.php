@@ -14,9 +14,6 @@ namespace FOS\HttpCacheBundle;
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use FOS\HttpCache\SymfonyCache\UserContextSubscriber;
 use Symfony\Bundle\FrameworkBundle\HttpCache\HttpCache as BaseHttpCache;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
@@ -25,7 +22,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 /**
  * Base class for enhanced Symfony reverse proxy based on the symfony FrameworkBundle HttpCache.
  *
- * @deprecated Use FOS\HttpCacheBundle\SymfonyCache\EventDispatchingHttpCache instead.
+ * @deprecated Use FOS\HttpCacheBundle\SymfonyCache\EventDispatchingHttpCache instead
  *
  * @author Jérôme Vieilledent <lolautruche@gmail.com> (courtesy of eZ Systems AS)
  *

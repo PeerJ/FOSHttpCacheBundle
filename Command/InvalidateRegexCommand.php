@@ -33,8 +33,8 @@ class InvalidateRegexCommand extends BaseInvalidateCommand
      * If no cache manager is specified explicitly, fos_http_cache.cache_manager
      * is automatically loaded.
      *
-     * @param CacheManager|null $cacheManager The cache manager to talk to.
-     * @param string            $commandName  Name of this command, in case you want to reuse it.
+     * @param CacheManager|null $cacheManager The cache manager to talk to
+     * @param string            $commandName  Name of this command, in case you want to reuse it
      */
     public function __construct(CacheManager $cacheManager = null, $commandName = 'fos:httpcache:invalidate:regex')
     {
@@ -43,7 +43,7 @@ class InvalidateRegexCommand extends BaseInvalidateCommand
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function configure()
     {
@@ -55,7 +55,7 @@ class InvalidateRegexCommand extends BaseInvalidateCommand
                 InputArgument::REQUIRED,
                 'Regular expression for the paths to match.'
             )
-            ->setHelp(<<<EOF
+            ->setHelp(<<<'EOF'
 The <info>%command.name%</info> command invalidates all cached content matching a regular expression on the configured caching proxies.
 
 Example:
@@ -71,7 +71,7 @@ EOF
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {

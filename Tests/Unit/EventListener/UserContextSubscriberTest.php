@@ -11,7 +11,6 @@
 
 namespace FOS\HttpCacheBundle\Tests\Unit\EventListener;
 
-use FOS\HttpCache\UserContext\HashGenerator;
 use FOS\HttpCacheBundle\EventListener\UserContextSubscriber;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -200,7 +199,40 @@ class UserContextSubscriberTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * If there is no hash in the requests but session changed, prevent setting bad cache
+     * If the request is an anonymous one, no hash should be generated/validated.
+     */
+    public function testFullAnonymousRequestHashNotGenerated()
+    {
+        $request = new Request();
+        $request->setMethod('GET');
+        $request->headers->set('X-Hash', 'anonymous-hash');
+
+        $requestMatcher = $this->getRequestMatcher($request, false);
+        $hashGenerator = \Mockery::mock('\FOS\HttpCache\UserContext\HashGenerator');
+        $hashGenerator->shouldReceive('generateHash')->never();
+
+        $anonymousRequestMatcher = \Mockery::mock('\Symfony\Component\HttpFoundation\RequestMatcherInterface');
+        $anonymousRequestMatcher->shouldReceive('matches')->andReturn(true);
+
+        // onKernelRequest
+        $userContextSubscriber = new UserContextSubscriber($requestMatcher, $hashGenerator, array('X-SessionId'), 'X-Hash', 0, $anonymousRequestMatcher);
+        $event = $this->getKernelRequestEvent($request);
+
+        $userContextSubscriber->onKernelRequest($event);
+
+        $response = $event->getResponse();
+
+        $this->assertNull($response);
+
+        // onKernelResponse
+        $event = $this->getKernelResponseEvent($request);
+        $userContextSubscriber->onKernelResponse($event);
+
+        $this->assertContains('X-Hash', $event->getResponse()->headers->get('Vary'));
+    }
+
+    /**
+     * If there is no hash in the requests but session changed, prevent setting bad cache.
      */
     public function testFullRequestHashChanged()
     {
@@ -227,7 +259,7 @@ class UserContextSubscriberTest extends \PHPUnit_Framework_TestCase
         $userContextSubscriber->onKernelResponse($event);
 
         $this->assertFalse($event->getResponse()->headers->has('Vary'));
-        $this->assertEquals('max-age=0, no-cache, private', $event->getResponse()->headers->get('Cache-Control'));
+        $this->assertEquals('max-age=0, no-cache, no-store, private, s-maxage=0', $event->getResponse()->headers->get('Cache-Control'));
     }
 
     protected function getKernelRequestEvent(Request $request, $type = HttpKernelInterface::MASTER_REQUEST)

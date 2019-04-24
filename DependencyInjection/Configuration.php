@@ -19,7 +19,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * This class contains the configuration information for the bundle
+ * This class contains the configuration information for the bundle.
  *
  * This information is solely responsible for how the different configuration
  * sections are normalized, and merged.
@@ -35,7 +35,7 @@ class Configuration implements ConfigurationInterface
     private $debug;
 
     /**
-     * @param Boolean $debug Whether to use the debug mode
+     * @param bool $debug Whether to use the debug mode
      */
     public function __construct($debug)
     {
@@ -43,7 +43,7 @@ class Configuration implements ConfigurationInterface
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function getConfigTreeBuilder()
     {
@@ -64,37 +64,48 @@ class Configuration implements ConfigurationInterface
 
                         return $v;
                     }
+
                     throw new InvalidConfigurationException('You need to configure a proxy_client or specify a custom_proxy_client to use the cache_manager.');
                 })
             ->end()
             ->validate()
-                ->ifTrue(function ($v) {return $v['tags']['enabled'] && !$v['cache_manager']['enabled'];})
+                ->ifTrue(function ($v) {
+                    return $v['tags']['enabled'] && !$v['cache_manager']['enabled'];
+                })
                 ->then(function ($v) {
                     if ('auto' === $v['tags']['enabled']) {
                         $v['tags']['enabled'] = false;
 
                         return $v;
                     }
+
                     throw new InvalidConfigurationException('You need to configure a proxy_client to get the cache_manager needed for tag handling.');
                 })
             ->end()
             ->validate()
-                ->ifTrue(function ($v) {return $v['tags']['rules'] && !$v['tags']['enabled'];})
+                ->ifTrue(function ($v) {
+                    return $v['tags']['rules'] && !$v['tags']['enabled'];
+                })
                 ->thenInvalid('You need to enable the cache_manager and tags to use rules.')
             ->end()
             ->validate()
-                ->ifTrue(function ($v) {return $v['invalidation']['enabled'] && !$v['cache_manager']['enabled'];})
+                ->ifTrue(function ($v) {
+                    return $v['invalidation']['enabled'] && !$v['cache_manager']['enabled'];
+                })
                 ->then(function ($v) {
                     if ('auto' === $v['invalidation']['enabled']) {
                         $v['invalidation']['enabled'] = false;
 
                         return $v;
                     }
+
                     throw new InvalidConfigurationException('You need to configure a proxy_client to get the cache_manager needed for invalidation handling.');
                 })
             ->end()
             ->validate()
-                ->ifTrue(function ($v) {return $v['invalidation']['rules'] && !$v['invalidation']['enabled'];})
+                ->ifTrue(function ($v) {
+                    return $v['invalidation']['rules'] && !$v['invalidation']['enabled'];
+                })
                 ->thenInvalid('You need to enable the cache_manager and invalidation to use rules.')
             ->end()
             ->validate()
@@ -102,13 +113,14 @@ class Configuration implements ConfigurationInterface
                     return isset($v['test'])
                         && $v['test']['client']['varnish']['enabled']
                         && !isset($v['proxy_client']['varnish']);
-                    })
+                })
                 ->then(function ($v) {
                     if ('auto' === $v['test']['client']['varnish']['enabled']) {
                         $v['test']['client']['varnish']['enabled'] = false;
 
                         return $v;
                     }
+
                     throw new InvalidConfigurationException('You need to configure the Varnish proxy_client to use the Varnish test client');
                 })
             ->end()
@@ -124,6 +136,7 @@ class Configuration implements ConfigurationInterface
 
                         return $v;
                     }
+
                     throw new InvalidConfigurationException('You need to configure the Nginx proxy_client to use the Nginx test client');
                 })
             ->end()
@@ -140,6 +153,7 @@ class Configuration implements ConfigurationInterface
 
                         return $v;
                     }
+
                     throw new InvalidConfigurationException('You need to configure a proxy_client for the logout_handler.');
                 })
         ;
@@ -230,7 +244,9 @@ class Configuration implements ConfigurationInterface
                         ->info('Specify an X-Reverse-Proxy-TTL header with a time in seconds for a caching proxy under your control.')
                     ->end()
                     ->arrayNode('vary')
-                        ->beforeNormalization()->ifString()->then(function ($v) { return preg_split('/\s*,\s*/', $v); })->end()
+                        ->beforeNormalization()->ifString()->then(function ($v) {
+                            return preg_split('/\s*,\s*/', $v);
+                        })->end()
                         ->prototype('scalar')->end()
                         ->info('Define a list of additional headers on which the response varies.')
                     ->end()
@@ -254,11 +270,15 @@ class Configuration implements ConfigurationInterface
                 ->fixXmlConfig('ip')
                 ->fixXmlConfig('attribute')
                 ->validate()
-                    ->ifTrue(function ($v) {return !empty($v['additional_cacheable_status']) && !empty($v['match_response']);})
+                    ->ifTrue(function ($v) {
+                        return !empty($v['additional_cacheable_status']) && !empty($v['match_response']);
+                    })
                     ->thenInvalid('You may not set both additional_cacheable_status and match_response.')
                 ->end()
                 ->validate()
-                    ->ifTrue(function ($v) {return !empty($v['match_response']) && !class_exists('Symfony\Component\ExpressionLanguage\ExpressionLanguage');})
+                    ->ifTrue(function ($v) {
+                        return !empty($v['match_response']) && !class_exists('Symfony\Component\ExpressionLanguage\ExpressionLanguage');
+                    })
                     ->thenInvalid('Configured a match_response but ExpressionLanguage is not available')
                 ->end()
                 ->children()
@@ -271,13 +291,17 @@ class Configuration implements ConfigurationInterface
                         ->info('Request host name.')
                     ->end()
                     ->arrayNode('methods')
-                        ->beforeNormalization()->ifString()->then(function ($v) { return preg_split('/\s*,\s*/', $v); })->end()
+                        ->beforeNormalization()->ifString()->then(function ($v) {
+                            return preg_split('/\s*,\s*/', $v);
+                        })->end()
                         ->useAttributeAsKey('name')
                         ->prototype('scalar')->end()
                         ->info('Request HTTP methods.')
                     ->end()
                     ->arrayNode('ips')
-                        ->beforeNormalization()->ifString()->then(function ($v) { return preg_split('/\s*,\s*/', $v); })->end()
+                        ->beforeNormalization()->ifString()->then(function ($v) {
+                            return preg_split('/\s*,\s*/', $v);
+                        })->end()
                         ->useAttributeAsKey('name')
                         ->prototype('scalar')->end()
                         ->info('List of client IPs.')
@@ -314,7 +338,9 @@ class Configuration implements ConfigurationInterface
                             ->fixXmlConfig('server')
                             ->children()
                                 ->arrayNode('servers')
-                                    ->beforeNormalization()->ifString()->then(function ($v) { return preg_split('/\s*,\s*/', $v); })->end()
+                                    ->beforeNormalization()->ifString()->then(function ($v) {
+                                        return preg_split('/\s*,\s*/', $v);
+                                    })->end()
                                     ->useAttributeAsKey('name')
                                     ->isRequired()
                                     ->requiresAtLeastOneElement()
@@ -336,7 +362,9 @@ class Configuration implements ConfigurationInterface
                             ->fixXmlConfig('server')
                             ->children()
                                 ->arrayNode('servers')
-                                    ->beforeNormalization()->ifString()->then(function ($v) { return preg_split('/\s*,\s*/', $v); })->end()
+                                    ->beforeNormalization()->ifString()->then(function ($v) {
+                                        return preg_split('/\s*,\s*/', $v);
+                                    })->end()
                                     ->useAttributeAsKey('name')
                                     ->isRequired()
                                     ->requiresAtLeastOneElement()
@@ -362,7 +390,9 @@ class Configuration implements ConfigurationInterface
                             ->fixXmlConfig('server')
                             ->children()
                                 ->arrayNode('servers')
-                                    ->beforeNormalization()->ifString()->then(function ($v) { return preg_split('/\s*,\s*/', $v); })->end()
+                                    ->beforeNormalization()->ifString()->then(function ($v) {
+                                        return preg_split('/\s*,\s*/', $v);
+                                    })->end()
                                     ->useAttributeAsKey('name')
                                     ->isRequired()
                                     ->requiresAtLeastOneElement()
@@ -457,7 +487,7 @@ class Configuration implements ConfigurationInterface
     }
 
     /**
-     * Cache manager main section
+     * Cache manager main section.
      *
      * @param ArrayNodeDefinition $rootNode
      */
@@ -483,7 +513,8 @@ class Configuration implements ConfigurationInterface
                             ->info('Allows to disable the invalidation manager. Enabled by default if you configure a proxy client.')
                         ->end()
                         ->scalarNode('custom_proxy_client')
-                            ->info('Service name of a custom proxy client to use. If you configure a proxy client, that client will be used by default.')
+                            ->info('Service name of a custom proxy client to use. With a custom client, generate_url_type defaults to ABSOLUTE_URL and tag support needs to be explicitly enabled. If no custom proxy client is specified, the first proxy client you configured is used.')
+                            ->cannotBeEmpty()
                         ->end()
                         ->enumNode('generate_url_type')
                             ->values(array(
@@ -522,7 +553,9 @@ class Configuration implements ConfigurationInterface
                                 ->fixXmlConfig('tag')
                                 ->fixXmlConfig('tag_expression')
                                 ->validate()
-                                    ->ifTrue(function ($v) {return !empty($v['tag_expressions']) && !class_exists('Symfony\Component\ExpressionLanguage\ExpressionLanguage');})
+                                    ->ifTrue(function ($v) {
+                                        return !empty($v['tag_expressions']) && !class_exists('Symfony\Component\ExpressionLanguage\ExpressionLanguage');
+                                    })
                                     ->thenInvalid('Configured a tag_expression but ExpressionLanugage is not available')
                                 ->end()
                                 ->children();
@@ -614,7 +647,11 @@ class Configuration implements ConfigurationInterface
                         ->arrayNode('user_identifier_headers')
                             ->prototype('scalar')->end()
                             ->defaultValue(array('Cookie', 'Authorization'))
-                            ->info('List of headers that contains the unique identifier for the user in the hash request.')
+                            ->info('List of headers that contain the unique identifier for the user in the hash request.')
+                        ->end()
+                        ->scalarNode('session_name_prefix')
+                            ->defaultValue(false)
+                            ->info('Prefix for session cookies. Must match your PHP session configuration. Set to false to ignore the session in user context.')
                         ->end()
                         ->scalarNode('user_hash_header')
                             ->defaultValue('X-User-Context-Hash')

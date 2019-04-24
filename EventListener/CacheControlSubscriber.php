@@ -50,12 +50,12 @@ class CacheControlSubscriber extends AbstractRuleSubscriber implements EventSubs
      * If not empty, add a debug header with that name to all responses,
      * telling the cache proxy to add debug output.
      *
-     * @var string|bool Name of the header or false to add no header.
+     * @var string|bool Name of the header or false to add no header
      */
     private $debugHeader;
 
     /**
-     * @param string|bool $debugHeader Header to set to trigger debugging, or false to send no header.
+     * @param string|bool $debugHeader Header to set to trigger debugging, or false to send no header
      */
     public function __construct($debugHeader = false)
     {
@@ -102,7 +102,7 @@ class CacheControlSubscriber extends AbstractRuleSubscriber implements EventSubs
         }
 
         // do not change cache directives on unsafe requests.
-        if ($this->skip || !$this->isRequestSafe($request)) {
+        if ($this->skip || !$this->isRequestCacheable($request)) {
             return;
         }
 
@@ -148,7 +148,7 @@ class CacheControlSubscriber extends AbstractRuleSubscriber implements EventSubs
      *
      * @param Response $response
      * @param array    $directives
-     * @param boolean  $overwrite  Whether to keep existing cache headers or to overwrite them.
+     * @param bool     $overwrite  Whether to keep existing cache headers or to overwrite them
      */
     private function setCache(Response $response, array $directives, $overwrite)
     {
@@ -158,7 +158,7 @@ class CacheControlSubscriber extends AbstractRuleSubscriber implements EventSubs
             return;
         }
 
-        if ('no-cache' === $response->headers->get('cache-control')) {
+        if (false !== strpos($response->headers->get('Cache-Control'), 'no-cache')) {
             // this single header is set by default. if its the only thing, we override it.
             $response->setCache($directives);
 
@@ -185,7 +185,7 @@ class CacheControlSubscriber extends AbstractRuleSubscriber implements EventSubs
      *
      * @param Response $response
      * @param array    $controls
-     * @param boolean  $overwrite Whether to keep existing cache headers or to overwrite them.
+     * @param bool     $overwrite Whether to keep existing cache headers or to overwrite them
      */
     private function setExtraCacheDirectives(Response $response, array $controls, $overwrite)
     {
@@ -209,17 +209,5 @@ class CacheControlSubscriber extends AbstractRuleSubscriber implements EventSubs
                 $response->headers->addCacheControlDirective($option, $controls[$key]);
             }
         }
-    }
-
-    /**
-     * Decide whether to even look for matching rules with the current request.
-     *
-     * @param Request $request
-     *
-     * @return bool True if the request is safe and headers can be set.
-     */
-    protected function isRequestSafe(Request $request)
-    {
-        return $request->isMethodSafe();
     }
 }

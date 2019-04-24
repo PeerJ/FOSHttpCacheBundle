@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of the FOSHttpCacheBundle package.
+ *
+ * (c) FriendsOfSymfony <http://friendsofsymfony.github.com/>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 $container->loadFromExtension('fos_http_cache', array(
     'cache_control' => array(
         'defaults' => array(
@@ -98,6 +107,7 @@ $container->loadFromExtension('fos_http_cache', array(
         ),
         'hash_cache_ttl' => 300,
         'user_identifier_headers' => array('Cookie', 'Authorization'),
+        'session_name_prefix' => 'PHPSESSID',
         'user_hash_header' => 'FOS-User-Context-Hash',
         'role_provider' => true,
     ),
@@ -111,5 +121,4 @@ $container->loadFromExtension('fos_http_cache', array(
     'debug' => array(
         'header' => 'FOS-Cache-Debug',
     ),
-
 ));

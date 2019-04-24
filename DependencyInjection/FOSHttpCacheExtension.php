@@ -19,6 +19,7 @@ use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
+use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -27,7 +28,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 class FOSHttpCacheExtension extends Extension
 {
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function getConfiguration(array $config, ContainerBuilder $container)
     {
@@ -35,7 +36,7 @@ class FOSHttpCacheExtension extends Extension
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function load(array $configs, ContainerBuilder $container)
     {
@@ -64,7 +65,7 @@ class FOSHttpCacheExtension extends Extension
         }
 
         if ($config['cache_manager']['enabled']) {
-            if (!empty($config['cache_manager']['custom_proxy_client'])) {
+            if (array_key_exists('custom_proxy_client', $config['cache_manager'])) {
                 // overwrite the previously set alias, if a proxy client was also configured
                 $container->setAlias(
                     $this->getAlias().'.default_proxy_client',
@@ -72,11 +73,15 @@ class FOSHttpCacheExtension extends Extension
                 );
             }
             if ('auto' === $config['cache_manager']['generate_url_type']) {
-                $defaultClient = $this->getDefaultProxyClient($config['proxy_client']);
-                $generateUrlType = empty($config['cache_manager']['custom_proxy_client']) && isset($config['proxy_client'][$defaultClient]['base_url'])
-                    ? UrlGeneratorInterface::ABSOLUTE_PATH
-                    : UrlGeneratorInterface::ABSOLUTE_URL
-                ;
+                if (array_key_exists('custom_proxy_client', $config['cache_manager'])) {
+                    $generateUrlType = UrlGeneratorInterface::ABSOLUTE_URL;
+                } else {
+                    $defaultClient = $this->getDefaultProxyClient($config['proxy_client']);
+                    $generateUrlType = array_key_exists('base_url', $config['proxy_client'][$defaultClient])
+                        ? UrlGeneratorInterface::ABSOLUTE_PATH
+                        : UrlGeneratorInterface::ABSOLUTE_URL
+                    ;
+                }
             } else {
                 $generateUrlType = $config['cache_manager']['generate_url_type'];
             }
@@ -89,7 +94,9 @@ class FOSHttpCacheExtension extends Extension
                 $container,
                 $loader,
                 $config['tags'],
-                $this->getDefaultProxyClient($config['proxy_client'])
+                array_key_exists('proxy_client', $config)
+                    ? $this->getDefaultProxyClient($config['proxy_client'])
+                    : 'custom'
             );
         } else {
             $container->setParameter($this->getAlias().'.compiler_pass.tag_annotations', false);
@@ -180,6 +187,12 @@ class FOSHttpCacheExtension extends Extension
 
     private function loadUserContext(ContainerBuilder $container, XmlFileLoader $loader, array $config)
     {
+        $configuredUserIdentifierHeaders = array_map('strtolower', $config['user_identifier_headers']);
+        $completeUserIdentifierHeaders = $configuredUserIdentifierHeaders;
+        if (false !== $config['session_name_prefix'] && !in_array('cookie', $completeUserIdentifierHeaders)) {
+            $completeUserIdentifierHeaders[] = 'cookie';
+        }
+
         $loader->load('user_context.xml');
 
         $container->getDefinition($this->getAlias().'.user_context.request_matcher')
@@ -188,13 +201,20 @@ class FOSHttpCacheExtension extends Extension
 
         $container->getDefinition($this->getAlias().'.event_listener.user_context')
             ->replaceArgument(0, new Reference($config['match']['matcher_service']))
-            ->replaceArgument(2, $config['user_identifier_headers'])
+            ->replaceArgument(2, $completeUserIdentifierHeaders)
             ->replaceArgument(3, $config['user_hash_header'])
             ->replaceArgument(4, $config['hash_cache_ttl']);
 
+        $options = array(
+            'user_identifier_headers' => $configuredUserIdentifierHeaders,
+            'session_name_prefix' => $config['session_name_prefix'],
+        );
+        $container->getDefinition($this->getAlias().'.user_context.anonymous_request_matcher')
+            ->replaceArgument(0, $options);
+
         if ($config['logout_handler']['enabled']) {
             $container->getDefinition($this->getAlias().'.user_context.logout_handler')
-                ->replaceArgument(1, $config['user_identifier_headers'])
+                ->replaceArgument(1, $completeUserIdentifierHeaders)
                 ->replaceArgument(2, $config['match']['accept']);
         } else {
             $container->removeDefinition($this->getAlias().'.user_context.logout_handler');
@@ -204,6 +224,15 @@ class FOSHttpCacheExtension extends Extension
             $container->getDefinition($this->getAlias().'.user_context.role_provider')
                 ->addTag(HashGeneratorPass::TAG_NAME)
                 ->setAbstract(false);
+        }
+
+        // Only decorate default session listener for Symfony 3.4+
+        if (version_compare(Kernel::VERSION, '3.4', '>=')) {
+            $container->getDefinition('fos_http_cache.user_context.session_listener')
+                ->setArgument(1, strtolower($config['user_hash_header']))
+                ->setArgument(2, array_map('strtolower', $config['user_identifier_headers']));
+        } else {
+            $container->removeDefinition('fos_http_cache.user_context.session_listener');
         }
     }
 
@@ -310,6 +339,13 @@ class FOSHttpCacheExtension extends Extension
         }
     }
 
+    /**
+     * @param ContainerBuilder $container
+     * @param XmlFileLoader    $loader
+     * @param array            $config    Configuration section for the tags node
+     * @param string           $client    Name of the client used with the cache manager,
+     *                                    "custom" when a custom client is used
+     */
     private function loadCacheTagging(ContainerBuilder $container, XmlFileLoader $loader, array $config, $client)
     {
         if ('auto' === $config['enabled'] && 'varnish' !== $client) {
@@ -317,7 +353,7 @@ class FOSHttpCacheExtension extends Extension
 
             return;
         }
-        if ('varnish' !== $client) {
+        if (!in_array($client, array('varnish', 'custom'))) {
             throw new InvalidConfigurationException(sprintf('You can not enable cache tagging with %s', $client));
         }
 
